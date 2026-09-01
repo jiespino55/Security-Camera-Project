@@ -1,8 +1,13 @@
 .venv/
 __pycache__/
 *.pyc
+
 *.jpg
 *.jpeg
 *.png
 *.mp4
+
+security.db
+*.pt
+
 .DS_Store

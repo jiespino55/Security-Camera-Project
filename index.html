@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Security Camera</title>
+    <style>
+        .eventCard {
+            border: 1px solid #ccc;
+            padding: 15px;
+            width: 320px;
+        }
+        #events {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+    </style>
+</head>
+<script>
+    fetch("/events")
+        .then(response => response.json())
+        .then(data => {
+
+            console.log(data)
+
+            const eventsDiv = document.getElementById("events")
+            const highAlert = ["person", "car", "truck", "motorcycle", "bicycle"]
+
+            data.forEach(event => {
+
+                const detectionCounts = {}
+
+                event.detections.forEach(detection => {
+                    const className = detection[0]
+
+                    if (highAlert.includes(className)) {
+                        detectionCounts[className] = (detectionCounts[className] || 0) + 1
+                    }
+                })
+
+                const titleParts = []
+
+                for (const className in detectionCounts) {
+                    const count = detectionCounts[className]
+                    let label
+                    
+                    if (className === "person" && count > 1) {
+                        label = "people"
+                    } else if (count === 1) {
+                        label = className
+                    } else {
+                        label = className + "s"
+                    }
+
+                    titleParts.push(`${count} ${label}`)
+                }
+
+                const eventTitle = titleParts.length > 0
+                    ? `Motion Detected: ${titleParts.join(", ")}`
+                    : "Motion Detected"
+
+                const eventDate = new Date(event.timestamp)
+                const formattedDate = eventDate.toLocaleString()
+
+                eventsDiv.innerHTML += `
+                    <div class="eventCard">
+                        <h2>${eventTitle}</h2>
+                        <p>${formattedDate}</p>
+                        <img src="${event.image}" width="300">
+                    </div>
+                `
+            })
+
+        })
+</script>
+<body>
+
+    <h1>Security Camera Events</h1>
+
+    <div id="events"></div>
+
+</body>
+</html>
