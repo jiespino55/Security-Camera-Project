@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Security Camera</title>
+    <link rel="manifest" href="/manifest.json">
     <style>
         .eventCard {
             border: 1px solid #ccc;
@@ -15,68 +16,89 @@
         }
     </style>
 </head>
-<script>
-    fetch("/events")
-        .then(response => response.json())
-        .then(data => {
 
-            console.log(data)
-
-            const eventsDiv = document.getElementById("events")
-            const highAlert = ["person", "car", "truck", "motorcycle", "bicycle"]
-
-            data.forEach(event => {
-
-                const detectionCounts = {}
-
-                event.detections.forEach(detection => {
-                    const className = detection[0]
-
-                    if (highAlert.includes(className)) {
-                        detectionCounts[className] = (detectionCounts[className] || 0) + 1
-                    }
-                })
-
-                const titleParts = []
-
-                for (const className in detectionCounts) {
-                    const count = detectionCounts[className]
-                    let label
-                    
-                    if (className === "person" && count > 1) {
-                        label = "people"
-                    } else if (count === 1) {
-                        label = className
-                    } else {
-                        label = className + "s"
-                    }
-
-                    titleParts.push(`${count} ${label}`)
-                }
-
-                const eventTitle = titleParts.length > 0
-                    ? `Motion Detected: ${titleParts.join(", ")}`
-                    : "Motion Detected"
-
-                const eventDate = new Date(event.timestamp)
-                const formattedDate = eventDate.toLocaleString()
-
-                eventsDiv.innerHTML += `
-                    <div class="eventCard">
-                        <h2>${eventTitle}</h2>
-                        <p>${formattedDate}</p>
-                        <img src="${event.image}" width="300">
-                    </div>
-                `
-            })
-
-        })
-</script>
 <body>
 
     <h1>Security Camera Events</h1>
 
+    <button id="notificationButton">Enable Notifications</button>
+
     <div id="events"></div>
+
+    <script>
+        fetch("/events")
+            .then(response => response.json())
+            .then(data => {
+
+                console.log(data)
+
+                const eventsDiv = document.getElementById("events")
+                const highAlert = ["person", "car", "truck", "motorcycle", "bicycle"]
+
+                data.forEach(event => {
+
+                    const detectionCounts = {}
+
+                    event.detections.forEach(detection => {
+                        const className = detection[0]
+
+                        if (highAlert.includes(className)) {
+                            detectionCounts[className] = (detectionCounts[className] || 0) + 1
+                        }
+                    })
+
+                    const titleParts = []
+
+                    for (const className in detectionCounts) {
+                        const count = detectionCounts[className]
+                        let label
+                        
+                        if (className === "person" && count > 1) {
+                            label = "people"
+                        } else if (count === 1) {
+                            label = className
+                        } else {
+                            label = className + "s"
+                        }
+
+                        titleParts.push(`${count} ${label}`)
+                    }
+
+                    const eventTitle = titleParts.length > 0
+                        ? `Motion Detected: ${titleParts.join(", ")}`
+                        : "Motion Detected"
+
+                    const eventDate = new Date(event.timestamp)
+                    const formattedDate = eventDate.toLocaleString()
+
+                    eventsDiv.innerHTML += `
+                        <div class="eventCard">
+                            <h2>${eventTitle}</h2>
+                            <p>${formattedDate}</p>
+                            <img src="${event.image}" width="300">
+                        </div>
+                    `
+                })
+
+            })
+            if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.register("/service-worker.js")
+            }
+            
+            const notificationButton = document.getElementById("notificationButton")
+            
+            notificationButton.addEventListener("click", async () => {
+                const permission = await Notification.requestPermission()
+                console.log("Notification permission:", permission)
+                if (permission === "granted") {
+                    const registration = await navigator.serviceWorker.ready
+
+                    registration.showNotification("Security Camera", {
+                        body: "Test notification is working"
+                    })
+                }
+            })
+    </script>
 
 </body>
 </html>

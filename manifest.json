@@ -1,0 +1,6 @@
+{
+    "name": "Security Camera",
+    "short_name": "Security Cam",
+    "start_url": "/dashboard",
+    "display": "standalone"
+}

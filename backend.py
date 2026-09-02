@@ -18,3 +18,10 @@ def events():
 def dashboard():
     return FileResponse("index.html")
 
+@app.get("/manifest.json")
+def manifest():
+    return FileResponse("manifest.json")
+
+@app.get("/service-worker.js")
+def serviceWorker():
+    return FileResponse("service-worker.js")
