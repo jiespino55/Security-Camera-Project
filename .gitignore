@@ -11,3 +11,5 @@ security.db
 *.pt
 
 .DS_Store
+
+.env
