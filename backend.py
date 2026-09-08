@@ -1,7 +1,10 @@
 from fastapi import FastAPI
-from database import getEvents
+from database import getEvents, saveEvent
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi import UploadFile, File, Form
+import os 
+import json
 
 app = FastAPI()
 app.mount("/images", StaticFiles(directory="events"), name="images")
@@ -25,3 +28,33 @@ def manifest():
 @app.get("/service-worker.js")
 def serviceWorker():
     return FileResponse("service-worker.js")
+
+@app.post("/events")
+async def createEvent(
+    image: UploadFile = File(...),
+    timestamp: str = Form(...),
+    detections: str = Form(...)
+):
+    fileName = os.path.basename(image.filename)
+    imagePath = "events/" + fileName
+
+    imageContents = await image.read()
+
+    with open(imagePath, "wb") as imageFile:
+        imageFile.write(imageContents)
+
+    detectionList = json.loads(detections)
+
+    event = {
+        "timestamp": timestamp,
+        "image": imagePath,
+        "detections": detectionList
+    }
+
+    saveEvent(event)
+
+    return {
+        "timestamp": timestamp,
+        "detections": detections,
+        "filename": image.filename
+    }

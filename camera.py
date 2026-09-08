@@ -5,7 +5,8 @@ import math
 # from ai import analyze_image
 import threading
 from ultralytics import YOLO
-from database import saveEvent
+import requests
+import json
 
 # database = sqlite3.connect("security.db")
 # database.execute("""
@@ -62,8 +63,24 @@ def analyze_in_background(filename):
         "image": filename,
         "detections": detections
     }
-    saveEvent(event)
-    print("Event saved to database")
+    with open(filename, "rb") as imageFile:
+        files = {
+            "image": imageFile
+        }
+
+        data = {
+            "timestamp": event["timestamp"],
+            "detections": json.dumps(event["detections"])
+        }
+
+        response = requests.post(
+            "http://127.0.0.1:8000/events",
+            files=files,
+            data=data
+        )
+
+    print("Backend response:", response.status_code)
+    print("Event sent to backend")
     print(event)
 
     return detections
