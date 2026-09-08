@@ -7,6 +7,7 @@ import os
 import json
 
 app = FastAPI()
+os.makedirs("events", exist_ok=True)
 app.mount("/images", StaticFiles(directory="events"), name="images")
 
 @app.get("/")
