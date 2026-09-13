@@ -5,6 +5,12 @@ from fastapi.responses import FileResponse
 from fastapi import UploadFile, File, Form
 import os 
 import json
+from supabase import create_client
+
+supabaseUrl = os.getenv("SUPABASE_URL")
+supabaseKey = os.getenv("SUPABASE_SECRET_KEY")
+
+supabase = create_client(supabaseUrl, supabaseKey)
 
 app = FastAPI()
 os.makedirs("events", exist_ok=True)
@@ -37,12 +43,15 @@ async def createEvent(
     detections: str = Form(...)
 ):
     fileName = os.path.basename(image.filename)
-    imagePath = "events/" + fileName
-
+    imagePath = fileName
+    
     imageContents = await image.read()
 
-    with open(imagePath, "wb") as imageFile:
-        imageFile.write(imageContents)
+    supabase.storage.from_("event-images").upload(
+        path=fileName,
+        file=imageContents,
+        file_options={"content-type": "image/jpeg"}
+    )
 
     detectionList = json.loads(detections)
 

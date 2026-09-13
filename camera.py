@@ -74,14 +74,17 @@ def analyze_in_background(filename):
         }
 
         response = requests.post(
-            "http://127.0.0.1:8000/events",
+            "https://security-camera-backend.onrender.com/events",
             files=files,
             data=data
         )
 
     print("Backend response:", response.status_code)
-    print("Event sent to backend")
-    print(event)
+    if response.status_code == 200:
+        print("Event sent to backend")
+    else:
+        print("Backend error:", response.status_code, response.text)
+        print(event)
 
     return detections
 
@@ -141,13 +144,19 @@ while True:
 
         currentTime = time.time()
         
-        if motionScore > 3.0 and currentTime - lastMotionTime > 15: 
+        if motionScore > 1.2 and currentTime - lastMotionTime > 15: 
             print("Motion detected!!")
 
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             #I want to save the image as "events/motion_detection_YYYY-MM-DD_HH-MM-SS.jpg"
             filename = f"events/motion_{timestamp}.jpg"
-            cv.imwrite(filename, img)
+            for i in range(15):
+                ret, delayedFrame = cap.read()
+
+            ret, delayedFrame = cap.read()
+
+            if ret:
+                cv.imwrite(filename, delayedFrame)
 
             thread = threading.Thread(
                 target=analyze_in_background,

@@ -1,5 +1,12 @@
 import sqlite3
 import json
+import os
+from supabase import create_client
+
+supabaseUrl = os.getenv("SUPABASE_URL")
+supabaseKey = os.getenv("SUPABASE_SECRET_KEY")
+
+supabase = create_client(supabaseUrl, supabaseKey)
 
 database = sqlite3.connect("security.db")
 database.execute("""
@@ -14,37 +21,26 @@ database.commit()
 database.close()
 
 def saveEvent(event):
-    connection = sqlite3.connect("security.db")
-    connection.execute(
-        "INSERT INTO events (timestamp, image, detections) VALUES (?, ?, ?)",
-        (
-            event["timestamp"],
-            event["image"],
-            json.dumps(event["detections"])
-        )
-    )
-    connection.commit()
-    connection.close()
+    supabase.table("events").insert({
+        "timestamp": event["timestamp"],
+        "image": event["image"],
+        "detections": event["detections"]
+    }).execute()
 
 def getEvents():
-    connection = sqlite3.connect("security.db")
-    rows = connection.execute(
-        "SELECT * FROM events ORDER BY timestamp DESC"
-    ).fetchall()
-    connection.close()
+    response = supabase.table("events").select("*").order(
+        "timestamp",
+        desc=True
+    ).execute()
 
-    events = []
-    for row in rows:
-        try:
-            detections = json.loads(row[3])
-        except json.JSONDecodeError:
-            detections = []
+    events = response.data
 
-        events.append({
-            "id": row[0],
-            "timestamp": row[1],
-            "image": "/images/" + row[2].split("/")[-1],
-            "detections": detections
-        })
+    for event in events:
+        signedUrl = supabase.storage.from_("event-images").create_signed_url(
+            event["image"],
+            3600
+        )
+
+        event["image"] = signedUrl["signedURL"]
 
     return events
