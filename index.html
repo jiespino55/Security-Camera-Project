@@ -26,6 +26,7 @@
     <div id="events"></div>
 
     <script>
+        const displayedEventIds = new Set()
         function loadEvents(){
             fetch("/events")
                 .then(response => response.json())
@@ -34,10 +35,12 @@
                     console.log(data)
 
                     const eventsDiv = document.getElementById("events")
-                    eventsDiv.innerHTML = ""
                     const highAlert = ["person", "car", "truck", "motorcycle", "bicycle"]
 
                     data.forEach(event => {
+                        if (displayedEventIds.has(event.id)) {
+                            return
+                        }
 
                         const detectionCounts = {}
 
@@ -80,6 +83,7 @@
                                 <img src="${event.image}" width="300">
                             </div>
                         `
+                        displayedEventIds.add(event.id)
                     })
 
                 })
