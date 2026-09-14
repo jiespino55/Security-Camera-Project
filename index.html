@@ -34,6 +34,7 @@
                     console.log(data)
 
                     const eventsDiv = document.getElementById("events")
+                    eventsDiv.innerHTML = ""
                     const highAlert = ["person", "car", "truck", "motorcycle", "bicycle"]
 
                     data.forEach(event => {
