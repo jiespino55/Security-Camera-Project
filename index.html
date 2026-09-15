@@ -37,7 +37,9 @@
                     const eventsDiv = document.getElementById("events")
                     const highAlert = ["person", "car", "truck", "motorcycle", "bicycle"]
 
-                    data.reverse()
+                    data.sort((a, b) => {
+                        return new Date(a.timestamp) - new Date(b.timestamp)
+                    })
                     
                     data.forEach(event => {
                         if (displayedEventIds.has(event.id)) {
