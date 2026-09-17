@@ -2,66 +2,62 @@ import cv2 as cv
 import time
 from datetime import datetime
 import math
-# from ai import analyze_image
 import threading
 from ultralytics import YOLO
 import requests
 import json
 
-# database = sqlite3.connect("security.db")
-# database.execute("""
-#     CREATE TABLE IF NOT EXISTS events (
-#         id INTEGER PRIMARY KEY AUTOINCREMENT,
-#         timestamp TEXT NOT NULL,
-#         image TEXT NOT NULL,
-#         detections TEXT NOT NULL
-#     )
-# """)
-# database.commit()
 model = YOLO("yolo26n.pt")
 
-# def saveEvent(event):
-#     connection = sqlite3.connect("security.db")
-#     connection.execute(
-#         "INSERT INTO events (timestamp, image, detections) VALUES (?, ?, ?)",
-#         (
-#             event["timestamp"],
-#             event["image"],
-#             json.dumps(event["detections"])
-#         )
-#     )
-#     connection.commit()
-#     connection.close()
-
-def analyze_in_background(filename):
+def analyze_in_background(sampledFrames, timestamp):
     print("AI analysis started")
-    # result = analyze_image(filename)
-    # print(result)
-    # print("Fake AI response")
-    results = model(filename)
-    detectionCount = len(results[0].boxes)
-    detections = []
-
     highAlert = ["person", "car", "motorcycle", "truck", "bicycle"]
 
-    for i in range(detectionCount):
-        classId = int(results[0].boxes.cls[i])
-        className = results[0].names[classId]
-        confidence = float(results[0].boxes.conf[i])
-        detections.append((className, confidence))
+    bestFrame = None
+    bestConfidence = 0
+    bestDetections = []
+    allFrameDetections = []
+    finalFrameNumber = 0
 
-        print("Detected:", className)
-        print(f"Confidence: {(confidence*100):.2f} %")
+    for frameNumber, frame in enumerate(sampledFrames, start=1):
+        print(f"\nAnalyzing frame {frameNumber} of 5")
+        results = model(frame)
+        detectionCount = len(results[0].boxes)
+        detections = []
+        frameIsBest = False
 
-    highAlertD = {
-        key: any(key == detection[0] for detection in detections)
-        for key in highAlert
-    }
+        for i in range(detectionCount):
+            classId = int(results[0].boxes.cls[i])
+            className = results[0].names[classId]
+            confidence = float(results[0].boxes.conf[i])
+            detections.append((className, confidence))
+
+            print("Detected:", className)
+            print(f"Confidence: {(confidence*100):.2f} %")
+
+            if className in highAlert and confidence > bestConfidence:
+                bestConfidence = confidence
+                bestFrame = frame
+                frameIsBest = True
+                finalFrameNumber = frameNumber
+
+        allFrameDetections.append(detections.copy())
+
+        if frameIsBest:
+            bestDetections = detections.copy()
+
+    if bestFrame is None:
+        bestFrame = sampledFrames[2]
+        bestDetections = allFrameDetections[2]
+        finalFrameNumber = 3
+
+    filename = f"events/motion_{timestamp}.jpg"
+    cv.imwrite(filename, bestFrame)
 
     event = {
         "timestamp": datetime.now().isoformat(),
         "image": filename,
-        "detections": detections
+        "detections": bestDetections
     }
     with open(filename, "rb") as imageFile:
         files = {
@@ -81,14 +77,14 @@ def analyze_in_background(filename):
 
     print("Backend response:", response.status_code)
     if response.status_code == 200:
-        print("Event sent to backend")
+        print(f"Event with frame {finalFrameNumber} sent to backend")
     else:
         print("Backend error:", response.status_code, response.text)
         print(event)
 
-    return detections
+    return bestDetections
 
-camera = 0
+camera = 1
 cameraStart = time.time()
 cap = cv.VideoCapture(camera)
 time.sleep(2)
@@ -98,7 +94,6 @@ if not cap.isOpened():
     exit()
 
 cap.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-#cap.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
 
 elapsed_time = time.time()-cameraStart
 w = cap.get(cv.CAP_PROP_FRAME_WIDTH)
@@ -108,7 +103,6 @@ print(f'Initializing camera {camera} took {elapsed_time:.2f} seconds')
 print(f'Frame size = ({h} ,{w})')
 
 count = 0
-# start = time.time()
 
 for _ in range(15):
     cap.read()
@@ -148,26 +142,29 @@ while True:
             print("Motion detected!!")
 
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            #I want to save the image as "events/motion_detection_YYYY-MM-DD_HH-MM-SS.jpg"
-            filename = f"events/motion_{timestamp}.jpg"
-            for i in range(15):
-                ret, delayedFrame = cap.read()
 
-            ret, delayedFrame = cap.read()
+            sampledFrames = []
+            startTime = time.time()
+            nextSampleTime = 0
 
-            if ret:
-                cv.imwrite(filename, delayedFrame)
+            while len(sampledFrames) < 5:
+                ret, frame = cap.read()
+
+                if not ret:
+                    continue
+
+                elapsedTime = time.time() - startTime
+
+                if elapsedTime >= nextSampleTime:
+                    sampledFrames.append(frame)
+                    nextSampleTime += 0.5
 
             thread = threading.Thread(
                 target=analyze_in_background,
-                args=(filename,)
+                args=(sampledFrames, timestamp)
             )
+
             thread.start()
-            
-            # result = analyze_image(filename)
-            # print(result)
-            
-            print(f"Saved: {filename}")
 
             lastMotionTime = currentTime
 
